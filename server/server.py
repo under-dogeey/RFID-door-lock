@@ -35,46 +35,32 @@ def get_db():
     finally:
         db.close()
 
-ids = []
-serverVariable = "FD01C906"
+#ids = []
+#serverVariable = "FD01C906"
 
 @app.get("/hello", response_model=cardIDModel)
 def getIP(id: str, db:Session = Depends(get_db)):
 
-    getID = db.query(cardID).filter(cardID.id == id).first()
-    if not getID:
+    newID = db.query(cardID).filter(cardID.id == id).first()
+    if not newID:
         raise HTTPException(status_code=404, detail="Data: not found")
     
-    return getID
-    #for value in ids:
-        #if value == id:
-            #return value
-    
-    #return {"Data: not found"}
+    return newID
 
-@app.get("/hellothere") 
-def getIPs():
-    return ids
+@app.get("/hellothere", response_model=List[cardIDModel]) 
+def getIPs(db:Session = Depends(get_db)):
+    return db.query(cardID).all()
 
 @app.post("/hello")
 async def postIP(id: str, db:Session = Depends(get_db)):
     if db.query(cardID).filter(cardID.id == id).first():
         raise HTTPException(status_code=404, detail="Error: Id exists")
     
-    newId = cardID(id=id)
-    db.add(newId)
+    newID = cardID(id=id)
+    db.add(newID)
     db.commit()
-    db.refresh(newId)
-    return newId
-    #for value in ids:
-    #    if value == id:
-    #        return {"Error: Id exists "}
-        
-    #if id == serverVariable:
-    #    ids.append(id)
-    #    return id
-    #else:
-    #    raise HTTPException(status_code=404, detail="Error: ID does not match server variable")
+    db.refresh(newID)
+    return newID
   
 
 if __name__ == "__main__":
