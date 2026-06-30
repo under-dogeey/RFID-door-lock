@@ -12,9 +12,23 @@
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);   // Create MFRC522 instance.
 
+const int buttonPin = 16;
+const int ledPin =  17;
+bool addCardMode = true;
+bool ledState = HIGH;
+int lastButtonState = HIGH;
+
+unsigned long previousMillis = 0;
+const long interval = 3000;
+
 const char* ssid = "KTWL2";
 const  char* password = "robertwl";
+
+const char* hotspotid = "roberttrinh";
+const char* hotspotpass = "?????????";
+
 String serverUrl = "http://192.168.1.21:8000/hello?id=";
+String hotspotserverUrl = "http://172.20.10.2:8000/hello?id=";
 
 bool flag = false;
 
@@ -41,6 +55,7 @@ void postID(String id)
     HTTPClient http;
 
     String fullServerUrl = serverUrl + id;
+    //String fullServerUrl = hotspotserverUrl + id;
 
     Serial.println(fullServerUrl);
 
@@ -81,6 +96,9 @@ void setup()
 {
   Serial.begin(9600);   // Initiate a serial communication
 
+  pinMode(buttonPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+
   // Connect to Wi-Fi network with SSID and password
   Serial.print("Connecting to ");
   Serial.println(ssid);
@@ -113,62 +131,102 @@ void setup()
 
 void loop() 
 {
+
+  int buttonState = digitalRead(buttonPin);
+  unsigned long currentMillis = millis();
+  //Serial.println(buttonState);
   // Look for new cards
-  if(flag)
+  
+  if(buttonState == LOW && lastButtonState == HIGH)
   {
-    if ( ! mfrc522.PICC_IsNewCardPresent()) 
+    if(!addCardMode)
     {
-      flag = false;
-      rearmIRQ();
-    }
-    // Select one of the cards
-    else if ( ! mfrc522.PICC_ReadCardSerial()) 
-    {
-      Serial.println("read failed");
-      flag = false;
-      rearmIRQ();
+      addCardMode = true;
+      ledState = HIGH;
     }
     else
-    {
-      Serial.println("Card read OK");
-      //Show UID on serial monitor
-      Serial.print("UID tag : ");
-      String content= "";
-      byte letter;
-      for (byte i = 0; i < mfrc522.uid.size; i++) 
-      {
-        Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? "0" : "");
-        Serial.print(mfrc522.uid.uidByte[i], HEX);
-        content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
-        content.concat(String(mfrc522.uid.uidByte[i], HEX));
-      }
-
-      Serial.println();
-      Serial.print("Message : ");
-      content.toUpperCase();
-
-      if (content) //change here the UID of the card/cards that you want to give access
-      {
-        postID(content);
-      }
-
-      mfrc522.PICC_HaltA();
-      mfrc522.PCD_StopCrypto1();
+    { 
+      addCardMode = false;
+      ledState = LOW;
+      previousMillis = currentMillis;
       flag = false;
       rearmIRQ();
-      delay(1000);
-
     }
-    
 
+    digitalWrite(ledPin, ledState);
   }
-  else
+
+  lastButtonState = buttonState;
+
+  if(addCardMode)
   {
-    delay(10);
+
+    //Serial.println("Add card state");
+
+    if(currentMillis - previousMillis >= interval)
+    {
+      Serial.println("Timed out");
+      addCardMode = false;
+      ledState = LOW;
+      digitalWrite(ledPin, ledState);
+      previousMillis = currentMillis;
+    }
+
+    if(flag)
+    {
+            
+      if ( ! mfrc522.PICC_IsNewCardPresent()) 
+      {
+        flag = false;
+        rearmIRQ();
+      }
+      // Select one of the cards
+      else if ( ! mfrc522.PICC_ReadCardSerial()) 
+      {
+        Serial.println("read failed");
+        flag = false;
+        rearmIRQ();
+      }
+      else
+      {
+        Serial.println("Card read OK");
+        //Show UID on serial monitor
+        Serial.print("UID tag : ");
+        String content= "";
+        byte letter;
+        for (byte i = 0; i < mfrc522.uid.size; i++) 
+        {
+          Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? "0" : "");
+          Serial.print(mfrc522.uid.uidByte[i], HEX);
+          content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
+          content.concat(String(mfrc522.uid.uidByte[i], HEX));
+        }
+
+        Serial.println();
+        Serial.print("Message : ");
+        content.toUpperCase();
+
+        if (content) //change here the UID of the card/cards that you want to give access
+        {
+          postID(content);
+        }
+
+        mfrc522.PICC_HaltA();
+        mfrc522.PCD_StopCrypto1();
+        flag = false;
+        rearmIRQ();
+
+        addCardMode = false;
+        ledState = LOW;
+        digitalWrite(ledPin, ledState);
+        delay(1000);
+      }
+    }            
+      mfrc522.PCD_WriteRegister(mfrc522.FIFODataReg, mfrc522.PICC_CMD_REQA);
+      mfrc522.PCD_WriteRegister(mfrc522.CommandReg, mfrc522.PCD_Transceive);
+      mfrc522.PCD_WriteRegister(mfrc522.BitFramingReg, 0x87);  
   }
 
-  mfrc522.PCD_WriteRegister(mfrc522.FIFODataReg, mfrc522.PICC_CMD_REQA);
-  mfrc522.PCD_WriteRegister(mfrc522.CommandReg, mfrc522.PCD_Transceive);
-  mfrc522.PCD_WriteRegister(mfrc522.BitFramingReg, 0x87);
-
+  delay(10);
+  
 } 
