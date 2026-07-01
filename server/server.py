@@ -52,15 +52,21 @@ def getIPs(db:Session = Depends(get_db)):
     return db.query(cardID).all()
 
 @app.post("/hello")
-async def postIP(id: str, db:Session = Depends(get_db)):
-    if db.query(cardID).filter(cardID.id == id).first():
-        raise HTTPException(status_code=404, detail="Error: Id exists")
+async def postIP(id: str, add: int, db:Session = Depends(get_db)):
+    if(add == 0):
+        raise HTTPException(status_code=404, detail="Reader not in add mode")
+        
+    elif(add == 1):
+        if db.query(cardID).filter(cardID.id == id).first():
+            raise HTTPException(status_code=404, detail="Error: Id exists")
+        
+        newID = cardID(id=id)
+        db.add(newID)
+        db.commit()
+        db.refresh(newID)
+        return newID
+
     
-    newID = cardID(id=id)
-    db.add(newID)
-    db.commit()
-    db.refresh(newID)
-    return newID
   
 
 if __name__ == "__main__":
