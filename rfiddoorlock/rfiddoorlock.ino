@@ -49,7 +49,46 @@ WiFiServer server(80);
 
 void postID(String id, int add)
 {
-  if(WiFi.status() == WL_CONNECTED)
+
+  if(WiFi.status() != WL_CONNECTED)
+  {
+    Serial.println("Error in WiFi connection");
+    return;
+  }
+
+  HTTPClient http;
+
+  String fullServerUrl = serverUrl + id + "&add=" + add;
+  //String fullServerUrl = hotspotserverUrl + id;
+
+  Serial.println(fullServerUrl);
+
+  http.begin(fullServerUrl);
+  http.addHeader("Content-Type", "application/json");
+
+  int httpResponseCode = http.POST("POSTING from ESP32");
+
+  if(httpResponseCode != 200)
+  {
+    Serial.println(" Access denied");
+    delay(3000);
+    Serial.print("Error on sending POST: ");
+    Serial.println(httpResponseCode);
+    return;
+  }
+
+  String response = http.getString();
+
+  Serial.println("Authorized access");
+  Serial.println();
+  delay(3000);
+
+  Serial.println(httpResponseCode);
+  Serial.println(response);
+
+  http.end();
+
+  /*if(WiFi.status() == WL_CONNECTED)
   {
 
     HTTPClient http;
@@ -89,7 +128,7 @@ void postID(String id, int add)
   else
   {
     Serial.println("Error in WiFi connection");
-  }
+  }*/
 }
  
 void setup() 
