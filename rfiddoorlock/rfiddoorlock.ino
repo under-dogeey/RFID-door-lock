@@ -14,7 +14,7 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);   // Create MFRC522 instance.
 
 const int buttonPin = 16;
 const int ledPin =  17;
-bool addCardMode = true;
+bool addCardMode = false;
 bool ledState = HIGH;
 int lastButtonState = HIGH;
 
@@ -88,47 +88,6 @@ void postID(String id, int add)
 
   http.end();
 
-  /*if(WiFi.status() == WL_CONNECTED)
-  {
-
-    HTTPClient http;
-
-    String fullServerUrl = serverUrl + id + "&add=" + add;
-    //String fullServerUrl = hotspotserverUrl + id;
-
-    Serial.println(fullServerUrl);
-
-    http.begin(fullServerUrl);
-    http.addHeader("Content-Type", "application/json");
-
-    int httpResponseCode = http.POST("POSTING from ESP32");
-
-    if(httpResponseCode == 200)
-    {
-      String response = http.getString();
-
-      Serial.println("Authorized access");
-      Serial.println();
-      delay(3000);
-
-      Serial.println(httpResponseCode);
-      Serial.println(response);
-    }
-    else
-    {
-      Serial.println(" Access denied");
-      delay(3000);
-      Serial.print("Error on sending POST: ");
-      Serial.println(httpResponseCode);
-    }
-
-    http.end();
-
-  }
-  else
-  {
-    Serial.println("Error in WiFi connection");
-  }*/
 }
  
 void setup() 
@@ -173,33 +132,22 @@ void loop()
 
   int buttonState = digitalRead(buttonPin);
   unsigned long currentMillis = millis();
-  //Serial.println(buttonState);
   // Look for new cards
-  
-  if(buttonState == LOW && lastButtonState == HIGH)
+
+  if(buttonState == HIGH && !addCardMode)
   {
-    if(!addCardMode)
-    {
-      addCardMode = true;
-      ledState = HIGH;
-      previousMillis = currentMillis;
-    }
-    else
-    { 
-      addCardMode = false;
-      ledState = LOW;
-      flag = false;
-      rearmIRQ();
-    }
-
-    digitalWrite(ledPin, ledState);
+    addCardMode = true;
+    ledState = HIGH;
+    previousMillis = currentMillis;
   }
-
-  lastButtonState = buttonState;
 
   if(addCardMode)
   { 
-    //Serial.println(String(currentMillis) + "-" + String(previousMillis) + "=" + String(currentMillis - previousMillis));
+    
+    //Serial.println(String(currentMillis) + "-" + String(previousMillis) + "=" + String(currentMillis - previousMillis)); //debug
+
+    ledState = HIGH;
+    digitalWrite(ledPin, ledState);
 
     if(currentMillis - previousMillis >= interval)
     {
@@ -215,11 +163,6 @@ void loop()
   if(flag)
   {    
 
-    /*if ( ! mfrc522.PICC_IsNewCardPresent()) 
-    {
-      flag = false;
-      rearmIRQ();
-    }*/
     // Select one of the cards
     if ( ! mfrc522.PICC_ReadCardSerial()) 
     {
@@ -229,7 +172,6 @@ void loop()
     }
     else
     {
-      //Serial.println("4");
       Serial.println("Card read OK");
       //Show UID on serial monitor
       Serial.print("UID tag : ");
