@@ -18,8 +18,9 @@ bool addCardMode = false;
 bool ledState = HIGH;
 int lastButtonState = HIGH;
 
+unsigned long currentMillis;
 unsigned long previousMillis = 0;
-const long interval = 30000;
+const long interval = 3000;
 
 const char* ssid = "KTWL2";
 const  char* password = "robertwl";
@@ -89,6 +90,30 @@ void postID(String id, int add)
   http.end();
 
 }
+
+void handleAddState()
+{
+  int buttonState = digitalRead(buttonPin);
+  currentMillis = millis();
+  // Look for new cards
+
+  if(buttonState == HIGH)
+  {
+    previousMillis = currentMillis;
+  }
+
+  if(currentMillis - previousMillis < interval)
+  {
+    //Serial.println(String(currentMillis) + "-" + String(previousMillis) + "=" + String(currentMillis - previousMillis)); //debug
+    ledState = HIGH;
+    digitalWrite(ledPin, ledState);
+    return;
+  }
+
+  ledState = LOW;
+  digitalWrite(ledPin, ledState);
+
+}
  
 void setup() 
 {
@@ -130,96 +155,57 @@ void setup()
 void loop() 
 {
 
-  int buttonState = digitalRead(buttonPin);
-  unsigned long currentMillis = millis();
-  // Look for new cards
+  handleAddState();
 
-  if(buttonState == HIGH && !addCardMode)
-  {
-    addCardMode = true;
-    ledState = HIGH;
-    previousMillis = currentMillis;
-  }
-
-  if(addCardMode)
-  { 
-    
-    //Serial.println(String(currentMillis) + "-" + String(previousMillis) + "=" + String(currentMillis - previousMillis)); //debug
-
-    ledState = HIGH;
-    digitalWrite(ledPin, ledState);
-
-    if(currentMillis - previousMillis >= interval)
-    {
-      Serial.println("Timed out");
-      addCardMode = false;
-      ledState = LOW;
-      flag = false;
-      digitalWrite(ledPin, ledState);
-        
-    }
-  }
-
-  if(flag)
+  if(flag && mfrc522.PICC_ReadCardSerial())
   {    
 
-    // Select one of the cards
-    if ( ! mfrc522.PICC_ReadCardSerial()) 
+    Serial.println("Card read OK");
+    //Show UID on serial monitor
+    Serial.print("UID tag : ");
+    String content= "";
+    byte letter;
+    for (byte i = 0; i < mfrc522.uid.size; i++) 
     {
-      //Serial.println("No Card Present!");
-      flag = false;
-      rearmIRQ();
+      Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? "0" : "");
+      Serial.print(mfrc522.uid.uidByte[i], HEX);
+      content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
+      content.concat(String(mfrc522.uid.uidByte[i], HEX));
+    }
+
+    Serial.println();
+    Serial.print("Message : ");
+    content.toUpperCase();
+
+    if (content && ledState == HIGH) //change here the UID of the card/cards that you want to give access
+    {
+      postID(content, 1);    
     }
     else
     {
-      Serial.println("Card read OK");
-      //Show UID on serial monitor
-      Serial.print("UID tag : ");
-      String content= "";
-      byte letter;
-      for (byte i = 0; i < mfrc522.uid.size; i++) 
-      {
-        Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? "0" : "");
-        Serial.print(mfrc522.uid.uidByte[i], HEX);
-        content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
-        content.concat(String(mfrc522.uid.uidByte[i], HEX));
-      }
-
-      Serial.println();
-      Serial.print("Message : ");
-      content.toUpperCase();
-
-      if (content) //change here the UID of the card/cards that you want to give access
-      {
-        if(addCardMode)
-        {
-          postID(content, 1);
-        }
-        else
-        {
-          Serial.println("Not in Read Mode");
-          postID(content, 0);
-        }
-        
-      }
-
-      mfrc522.PICC_HaltA();
-      mfrc522.PCD_StopCrypto1();
-      flag = false;
-      rearmIRQ();
-
-      addCardMode = false;
-      ledState = LOW;
-      digitalWrite(ledPin, ledState);
-      previousMillis = currentMillis;
-      delay(1000);
-      
+      Serial.println("Not in Read Mode");
+      postID(content, 0);
     }
-  }            
+
+    mfrc522.PICC_HaltA();
+    mfrc522.PCD_StopCrypto1();
+    flag = false;
+    rearmIRQ();
+
+    ledState = LOW;
+    digitalWrite(ledPin, ledState);
+    previousMillis = currentMillis;
+    delay(1000);
+      
+  }
+
+    //Serial.println("No Card Present!");
+    flag = false;
+    rearmIRQ();
+
     mfrc522.PCD_WriteRegister(mfrc522.FIFODataReg, mfrc522.PICC_CMD_REQA);
     mfrc522.PCD_WriteRegister(mfrc522.CommandReg, mfrc522.PCD_Transceive);
     mfrc522.PCD_WriteRegister(mfrc522.BitFramingReg, 0x87);  
-
-  delay(10);
+    delay(10);
   
 } 
