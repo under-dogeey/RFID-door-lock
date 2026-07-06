@@ -199,42 +199,6 @@ void loop()
   {    
 
     scanCard();
-    /*Serial.println("Card read OK");
-    //Show UID on serial monitor
-    Serial.print("UID tag : ");
-    String content= "";
-    byte letter;
-    for (byte i = 0; i < mfrc522.uid.size; i++) 
-    {
-      Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? "0" : "");
-      Serial.print(mfrc522.uid.uidByte[i], HEX);
-      content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
-      content.concat(String(mfrc522.uid.uidByte[i], HEX));
-    }
-
-    Serial.println();
-    Serial.print("Message : ");
-    content.toUpperCase();
-
-    if (content && ledState == HIGH) //change here the UID of the card/cards that you want to give access
-    {
-      postID(content, 1);    
-    }
-    else
-    {
-      Serial.println("Not in Read Mode");
-      postID(content, 0);
-    }
-
-    mfrc522.PICC_HaltA();
-    mfrc522.PCD_StopCrypto1();
-    flag = false;
-    rearmIRQ();
-
-    ledState = LOW;
-    digitalWrite(ledPin, ledState);
-    previousMillis = currentMillis;
-    delay(1000);*/
       
   }
 
