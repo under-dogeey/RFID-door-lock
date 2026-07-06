@@ -14,13 +14,11 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);   // Create MFRC522 instance.
 
 const int buttonPin = 16;
 const int ledPin =  17;
-bool addCardMode = false;
-bool ledState = HIGH;
-int lastButtonState = HIGH;
+bool ledState = LOW;
 
 unsigned long currentMillis;
 unsigned long previousMillis = 0;
-const long interval = 3000;
+const long interval = 30000;
 
 const char* ssid = "KTWL2";
 const  char* password = "robertwl";
@@ -39,7 +37,7 @@ void rearmIRQ()
   mfrc522.PCD_WriteRegister(mfrc522.ComIEnReg, 0xA0);
 }
 
-IRAM_ATTR void readCard()
+IRAM_ATTR void setFlag()
 {
   flag = true;
 }
@@ -114,6 +112,46 @@ void handleAddState()
   digitalWrite(ledPin, ledState);
 
 }
+
+void scanCard()
+{
+  Serial.println("Card read OK");
+  //Show UID on serial monitor
+  Serial.print("UID tag : ");
+  String content= "";
+  byte letter;
+  for (byte i = 0; i < mfrc522.uid.size; i++) 
+  {
+    Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? "0" : "");
+    Serial.print(mfrc522.uid.uidByte[i], HEX);
+    content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
+    content.concat(String(mfrc522.uid.uidByte[i], HEX));
+  }
+
+  Serial.println();
+  Serial.print("Message : ");
+  content.toUpperCase();
+
+  if (content && ledState == HIGH) //change here the UID of the card/cards that you want to give access
+  {
+    postID(content, 1);    
+  }
+  else
+  {
+    Serial.println("Not in Read Mode");
+    postID(content, 0);
+  }
+
+  mfrc522.PICC_HaltA();
+  mfrc522.PCD_StopCrypto1();
+  flag = false;
+  rearmIRQ();
+
+  ledState = LOW;
+  digitalWrite(ledPin, ledState);
+  previousMillis = currentMillis;
+  delay(1000);
+}
  
 void setup() 
 {
@@ -145,7 +183,7 @@ void setup()
 
   pinMode(IRQ_PIN, INPUT_PULLUP);
   mfrc522.PCD_WriteRegister(mfrc522.ComIEnReg, 0xA0);
-  attachInterrupt(digitalPinToInterrupt(IRQ_PIN), readCard, FALLING);
+  attachInterrupt(digitalPinToInterrupt(IRQ_PIN), setFlag, FALLING);
 
   Serial.println("Approximate your card to the reader...");
   Serial.println();
@@ -160,7 +198,8 @@ void loop()
   if(flag && mfrc522.PICC_ReadCardSerial())
   {    
 
-    Serial.println("Card read OK");
+    scanCard();
+    /*Serial.println("Card read OK");
     //Show UID on serial monitor
     Serial.print("UID tag : ");
     String content= "";
@@ -195,7 +234,7 @@ void loop()
     ledState = LOW;
     digitalWrite(ledPin, ledState);
     previousMillis = currentMillis;
-    delay(1000);
+    delay(1000);*/
       
   }
 
