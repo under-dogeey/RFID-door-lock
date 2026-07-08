@@ -46,13 +46,15 @@ IRAM_ATTR void setFlag()
 WiFiServer server(80);
 
 
-void postID(String id, int add)
+String postID(String id, int add)
 {
+
+  String message = "";
 
   if(WiFi.status() != WL_CONNECTED)
   {
-    Serial.println("Error in WiFi connection");
-    return;
+    message = "Error in WiFi connection\n";
+    return message;
   }
 
   HTTPClient http;
@@ -60,7 +62,8 @@ void postID(String id, int add)
   String fullServerUrl = serverUrl + id + "&add=" + add;
   //String fullServerUrl = hotspotserverUrl + id;
 
-  Serial.println(fullServerUrl);
+
+  message += ("\n" + fullServerUrl + "\n");
 
   http.begin(fullServerUrl);
   http.addHeader("Content-Type", "application/json");
@@ -69,23 +72,24 @@ void postID(String id, int add)
 
   if(httpResponseCode != 200)
   {
-    Serial.println(" Access denied");
+    message += " Access denied\n";
     delay(3000);
-    Serial.print("Error on sending POST: ");
-    Serial.println(httpResponseCode);
-    return;
+    message += "Error on sending POST: " + (String(httpResponseCode) + "\n");
+    return message;
   }
 
   String response = http.getString();
 
-  Serial.println("Authorized access");
-  Serial.println();
+  message += "Authorized access\n";
   delay(3000);
 
-  Serial.println(httpResponseCode);
-  Serial.println(response);
+  message += (String(httpResponseCode) + "\n");
+
+  message += (String(response) + "\n");
 
   http.end();
+
+  return message;
 
 }
 
@@ -102,7 +106,7 @@ void handleAddState()
 
   if(currentMillis - previousMillis < interval)
   {
-    //Serial.println(String(currentMillis) + "-" + String(previousMillis) + "=" + String(currentMillis - previousMillis)); //debug
+    //logMessage(String(currentMillis) + "-" + String(previousMillis) + "=" + String(currentMillis - previousMillis)); //debug
     ledState = HIGH;
     digitalWrite(ledPin, ledState);
     return;
@@ -115,31 +119,31 @@ void handleAddState()
 
 void scanCard()
 {
-  Serial.println("Card read OK");
+  logMessage("Card read OK");
   //Show UID on serial monitor
-  Serial.print("UID tag : ");
+
   String content= "";
   byte letter;
   for (byte i = 0; i < mfrc522.uid.size; i++) 
   {
-    Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? "0" : "");
-    Serial.print(mfrc522.uid.uidByte[i], HEX);
+
     content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
     content.concat(String(mfrc522.uid.uidByte[i], HEX));
   }
 
-  Serial.println();
-  Serial.print("Message : ");
   content.toUpperCase();
+  logMessage("UID tag : " + content);
 
   if (content && ledState == HIGH) //change here the UID of the card/cards that you want to give access
   {
-    postID(content, 1);    
+    logMessage("Message : " + postID(content, 1));
+    //postID(content, 1);    
   }
   else
   {
-    Serial.println("Not in Read Mode");
-    postID(content, 0);
+    logMessage("Message : " + postID(content, 0));
+    //logMessage("Not in Read Mode");
+    //postID(content, 0);
   }
 
   mfrc522.PICC_HaltA();
@@ -152,6 +156,11 @@ void scanCard()
   previousMillis = currentMillis;
   delay(1000);
 }
+
+void logMessage(String str)
+{
+  Serial.println("\n[" + String(millis()) + "] " + str);
+}
  
 void setup() 
 {
@@ -161,9 +170,9 @@ void setup()
   pinMode(ledPin, OUTPUT);
 
   // Connect to Wi-Fi network with SSID and password
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
+  logMessage("Connecting to " + String(ssid));
   WiFi.begin(ssid, password);
+
   while(WiFi.status() != WL_CONNECTED) 
   {
     delay(500);
@@ -171,10 +180,8 @@ void setup()
   }
 
   // Print local IP address and start web server
-  Serial.println("");
-  Serial.println("WiFi connected.");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+  logMessage("WiFi connected.");
+  logMessage("IP address: " + WiFi.localIP().toString());
 
   server.begin();
 
@@ -185,8 +192,8 @@ void setup()
   mfrc522.PCD_WriteRegister(mfrc522.ComIEnReg, 0xA0);
   attachInterrupt(digitalPinToInterrupt(IRQ_PIN), setFlag, FALLING);
 
-  Serial.println("Approximate your card to the reader...");
-  Serial.println();
+  logMessage("Approximate your card to the reader...");
+
 
 }
 
