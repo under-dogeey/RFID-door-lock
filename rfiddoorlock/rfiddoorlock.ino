@@ -13,12 +13,18 @@
 MFRC522 mfrc522(SS_PIN, RST_PIN);   // Create MFRC522 instance.
 
 const int buttonPin = 16;
-const int ledPin =  17;
-bool ledState = LOW;
+const int addModeLedPin =  17;
+const int unlockLedPin = 21;
+//bool ledState = LOW;
 
-unsigned long currentMillis;
-unsigned long previousMillis = 0;
-const long interval = 30000;
+unsigned long addModeCurrentMillis;
+unsigned long addModePreviousMillis = 0;
+const long addModeInterval = 30000;
+unsigned long unlockCurrentMillis;
+unsigned long unlockPreviousMillis = 0;
+const long unlockInterval = 10000;
+
+bool addMode = false;
 
 const char* ssid = "KTWL2";
 const  char* password = "robertwl";
@@ -30,6 +36,11 @@ String serverUrl = "http://192.168.1.21:8000/hello?id=";
 String hotspotserverUrl = "http://172.20.10.2:8000/hello?id=";
 
 bool flag = false;
+
+void logMessage(String str)
+{
+  Serial.println("\n[" + String(millis()) + "] " + str);
+}
 
 void rearmIRQ()
 {
@@ -45,6 +56,85 @@ IRAM_ATTR void setFlag()
 // Set web server port number to 80
 WiFiServer server(80);
 
+
+
+
+void handleAddState()
+{
+  int buttonState = digitalRead(buttonPin);
+  addModeCurrentMillis = millis();
+  unlockCurrentMillis = millis();
+  // Look for new cards
+
+  if(buttonState == HIGH)
+  {
+    addMode = true;
+    addModePreviousMillis = addModeCurrentMillis;
+  }
+
+  if(addMode && (addModeCurrentMillis - addModePreviousMillis < addModeInterval))
+  {
+    //logMessage(String(addModeCurrentMillis) + "-" + String(addModePreviousMillis) + "=" + String(addModeCurrentMillis - addModePreviousMillis)); //debug
+    digitalWrite(addModeLedPin, HIGH);
+    return;
+  }
+
+  addMode = false;
+  digitalWrite(addModeLedPin, LOW);
+
+}
+
+void scanCard()
+{
+  logMessage("Card read OK");
+  //Show UID on serial monitor
+
+  String content= "";
+  byte letter;
+  for (byte i = 0; i < mfrc522.uid.size; i++) 
+  {
+
+    content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
+    content.concat(String(mfrc522.uid.uidByte[i], HEX));
+  }
+
+  content.toUpperCase();
+  logMessage("UID tag : " + content);
+
+  if (content && addMode) //change here the UID of the card/cards that you want to give access
+  {
+    logMessage("Message : " + postID(content, 1));
+    unlockLED();
+  }
+  else
+  {
+    logMessage("Message : " + postID(content, 0));
+  }
+
+  mfrc522.PICC_HaltA();
+  mfrc522.PCD_StopCrypto1();
+  flag = false;
+  rearmIRQ();
+
+  digitalWrite(addModeLedPin, LOW);
+  addModePreviousMillis = addModeCurrentMillis;
+  delay(1000);
+}
+
+void unlockLED()
+{
+  unlockPreviousMillis = unlockCurrentMillis;
+
+  while(unlockCurrentMillis - unlockPreviousMillis < unlockInterval)
+  {
+    unlockCurrentMillis = millis();
+    //logMessage(String(unlockCurrentMillis) + "-" + String(unlockPreviousMillis) + "=" + String(unlockCurrentMillis - unlockPreviousMillis)); //debug
+    digitalWrite(unlockLedPin, HIGH);
+  }
+  
+  digitalWrite(unlockLedPin, LOW);
+  
+}
 
 String postID(String id, int add)
 {
@@ -87,79 +177,12 @@ String postID(String id, int add)
 
   message += (String(response) + "\n");
 
+  addMode = false;
+  digitalWrite(addModeLedPin, LOW);
   http.end();
 
   return message;
 
-}
-
-void handleAddState()
-{
-  int buttonState = digitalRead(buttonPin);
-  currentMillis = millis();
-  // Look for new cards
-
-  if(buttonState == HIGH)
-  {
-    previousMillis = currentMillis;
-  }
-
-  if(currentMillis - previousMillis < interval)
-  {
-    //logMessage(String(currentMillis) + "-" + String(previousMillis) + "=" + String(currentMillis - previousMillis)); //debug
-    ledState = HIGH;
-    digitalWrite(ledPin, ledState);
-    return;
-  }
-
-  ledState = LOW;
-  digitalWrite(ledPin, ledState);
-
-}
-
-void scanCard()
-{
-  logMessage("Card read OK");
-  //Show UID on serial monitor
-
-  String content= "";
-  byte letter;
-  for (byte i = 0; i < mfrc522.uid.size; i++) 
-  {
-
-    content.concat(String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : ""));
-    content.concat(String(mfrc522.uid.uidByte[i], HEX));
-  }
-
-  content.toUpperCase();
-  logMessage("UID tag : " + content);
-
-  if (content && ledState == HIGH) //change here the UID of the card/cards that you want to give access
-  {
-    logMessage("Message : " + postID(content, 1));
-    //postID(content, 1);    
-  }
-  else
-  {
-    logMessage("Message : " + postID(content, 0));
-    //logMessage("Not in Read Mode");
-    //postID(content, 0);
-  }
-
-  mfrc522.PICC_HaltA();
-  mfrc522.PCD_StopCrypto1();
-  flag = false;
-  rearmIRQ();
-
-  ledState = LOW;
-  digitalWrite(ledPin, ledState);
-  previousMillis = currentMillis;
-  delay(1000);
-}
-
-void logMessage(String str)
-{
-  Serial.println("\n[" + String(millis()) + "] " + str);
 }
  
 void setup() 
@@ -167,7 +190,8 @@ void setup()
   Serial.begin(9600);   // Initiate a serial communication
 
   pinMode(buttonPin, INPUT);
-  pinMode(ledPin, OUTPUT);
+  pinMode(addModeLedPin, OUTPUT);
+  pinMode(unlockLedPin, OUTPUT);
 
   // Connect to Wi-Fi network with SSID and password
   logMessage("Connecting to " + String(ssid));
@@ -204,9 +228,7 @@ void loop()
 
   if(flag && mfrc522.PICC_ReadCardSerial())
   {    
-
-    scanCard();
-      
+    scanCard(); 
   }
 
     //Serial.println("No Card Present!");
