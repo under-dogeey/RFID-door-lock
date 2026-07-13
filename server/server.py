@@ -1,10 +1,12 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Response
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
 from pydantic import BaseModel
 from typing import Optional, List
+
+import prometheus_client
 
 import uvicorn
 import random
@@ -38,6 +40,11 @@ def get_db():
 #ids = []
 #serverVariable = "FD01C906"
 
+card_count = prometheus_client.Counter(
+    "card_count",
+    "Number of cards",
+)
+
 @app.get("/hello", response_model=cardIDModel)
 def getIP(id: str, db:Session = Depends(get_db)):
 
@@ -50,6 +57,10 @@ def getIP(id: str, db:Session = Depends(get_db)):
 @app.get("/hellothere", response_model=List[cardIDModel]) 
 def getIPs(db:Session = Depends(get_db)):
     return db.query(cardID).all()
+
+@app.get('/metrics')
+def getMetrics():
+    return Response(content=prometheus_client.generate_latest(), media_type="text/plain")
 
 @app.post("/hello")
 async def postIP(id: str, add: int, db:Session = Depends(get_db)):
@@ -64,6 +75,8 @@ async def postIP(id: str, add: int, db:Session = Depends(get_db)):
         db.add(newID)
         db.commit()
         db.refresh(newID)
+
+        card_count.inc() #increment metric
         return newID
 
     
@@ -72,4 +85,4 @@ async def postIP(id: str, add: int, db:Session = Depends(get_db)):
 if __name__ == "__main__":
     Base.metadata.drop_all(bind=engine)   # delete all tables
     Base.metadata.create_all(bind=engine) # recreate empty tables
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
