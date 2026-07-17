@@ -10,6 +10,7 @@ import prometheus_client
 
 import uvicorn
 import random
+import time
 
 app = FastAPI()
 
@@ -40,9 +41,9 @@ def get_db():
 #ids = []
 #serverVariable = "FD01C906"
 
-card_count = prometheus_client.Counter(
-    "card_count",
-    "Number of cards",
+last_http_request = prometheus_client.Gauge(
+    "last_http_request",
+    "Last HTTP request made in time",
 )
 
 @app.get("/hello", response_model=cardIDModel)
@@ -60,10 +61,14 @@ def getIPs(db:Session = Depends(get_db)):
 
 @app.get('/metrics')
 def getMetrics():
+
     return Response(content=prometheus_client.generate_latest(), media_type="text/plain")
 
 @app.post("/hello")
 async def postIP(id: str, add: int, db:Session = Depends(get_db)):
+
+    last_http_request.set(time.time()) #set metric
+
     if(add == 0):
         raise HTTPException(status_code=404, detail="Reader not in add mode")
         
@@ -75,8 +80,6 @@ async def postIP(id: str, add: int, db:Session = Depends(get_db)):
         db.add(newID)
         db.commit()
         db.refresh(newID)
-
-        card_count.inc() #increment metric
         return newID
 
     
