@@ -1,0 +1,10 @@
+version: "2"
+services:
+  monitor-card-id:
+    container_name: monitor-card-id
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    restart: "on-failure"
+    ports:
+      - 8000:8000
