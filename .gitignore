@@ -1,4 +1,4 @@
 # Prometheus binaries and runtime data
-prometheus/prometheus.exe
-prometheus/promtool.exe
-prometheus/data/
+server/prometheus/prometheus.exe
+server/prometheus/promtool.exe
+server/prometheus/data/

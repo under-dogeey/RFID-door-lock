@@ -32,7 +32,7 @@ const  char* password = "robertwl";
 const char* hotspotid = "roberttrinh";
 const char* hotspotpass = "?????????";
 
-String serverUrl = "http://192.168.1.21:8000/hello?id=";
+String serverUrl = "http://192.168.1.2:8000/hello?id=";
 String hotspotserverUrl = "http://172.20.10.2:8000/hello?id=";
 
 bool flag = false;
