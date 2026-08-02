@@ -12,9 +12,10 @@
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);   // Create MFRC522 instance.
 
-const int buttonPin = 16;
-const int addModeLedPin =  17;
-const int unlockLedPin = 21;
+const int buttonPin = 17;
+const int addModeLedPin =  21;
+const int unlockLedPin = 27;
+const int lockPin = 16;   // IRLZ44N gate
 //bool ledState = LOW;
 
 unsigned long addModeCurrentMillis;
@@ -32,7 +33,7 @@ const  char* password = "robertwl";
 const char* hotspotid = "roberttrinh";
 const char* hotspotpass = "?????????";
 
-String serverUrl = "http://192.168.1.2:8000/hello?id=";
+String serverUrl = "http://192.168.1.9:8000/hello?id=";
 String hotspotserverUrl = "http://172.20.10.2:8000/hello?id=";
 
 bool flag = false;
